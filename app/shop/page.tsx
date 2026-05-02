@@ -1,40 +1,52 @@
 // app/shop/page.tsx
-import { Suspense } from 'react'
 import Navbar from '@/components/Navbar'
 import CartDrawer from '@/components/CartDrawer'
 import ProductCard from '@/components/ProductCard'
 import { searchProducts, CJProduct } from '@/lib/cj'
 import Link from 'next/link'
 
+const MARKUP         = 2.5
+const COMPARE_MARKUP = 3.2
+
 function toSlug(name: string, pid: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + pid.slice(-6)
 }
 
 const CATEGORIES = [
-  { key: 'all',    label: 'All',          keyword: 'beauty home organizer' },
-  { key: 'beauty', label: 'Beauty Tools', keyword: 'beauty tools' },
-  { key: 'home',   label: 'Home & Organise', keyword: 'home organizer' },
+  { key: 'all',    label: 'All',             keywords: ['makeup brush', 'storage box'] },
+  { key: 'beauty', label: 'Beauty Tools',    keywords: ['makeup brush', 'facial roller'] },
+  { key: 'home',   label: 'Home & Organise', keywords: ['storage box', 'drawer organizer'] },
 ]
 
+// Sequential fetching to avoid CJ rate limit (1 req/sec)
 async function getProducts(cat: string, page: number) {
   const category = CATEGORIES.find(c => c.key === cat) || CATEGORIES[0]
+  const allProducts: CJProduct[] = []
+  let total = 0
 
-  if (cat === 'all') {
-    // Fetch both in parallel for "all" category
-    const [beauty, home] = await Promise.allSettled([
-      searchProducts('beauty tools', page, 10),
-      searchProducts('home organizer', page, 10),
-    ])
-    const beautyList = beauty.status === 'fulfilled' ? beauty.value?.list ?? [] : []
-    const homeList   = home.status  === 'fulfilled' ? home.value?.list   ?? [] : []
-    return {
-      list:  [...beautyList, ...homeList],
-      total: (beauty.status === 'fulfilled' ? beauty.value?.total ?? 0 : 0) +
-             (home.status   === 'fulfilled' ? home.value?.total   ?? 0 : 0),
+  for (const kw of category.keywords) {
+    try {
+      const result = await searchProducts(kw, page, 10)
+      if (result?.list) {
+        allProducts.push(...result.list)
+        total += result.total
+      }
+      // Small delay between requests to respect rate limit
+      await new Promise(r => setTimeout(r, 1100))
+    } catch (e) {
+      console.error('Failed to fetch keyword:', kw, e)
     }
   }
 
-  return searchProducts(category.keyword, page, 20)
+  // Remove duplicates by pid
+  const seen = new Set<string>()
+  const unique = allProducts.filter(p => {
+    if (seen.has(p.pid)) return false
+    seen.add(p.pid)
+    return true
+  })
+
+  return { list: unique, total }
 }
 
 export default async function ShopPage({
@@ -46,7 +58,6 @@ export default async function ShopPage({
   const page = Number(searchParams.page || 1)
 
   const { list: products, total } = await getProducts(cat, page)
-  const totalPages = Math.ceil(total / 20)
 
   return (
     <>
@@ -98,9 +109,9 @@ export default async function ShopPage({
                     slug={toSlug(p.productNameEn, p.pid)}
                     name={p.productNameEn}
                     image={p.productImage}
-                    price={p.sellPrice}
-                    comparePrice={p.sellPrice * 1.38}
-                    category={cat === 'all' ? p.categoryName : undefined}
+                    price={Number(p.sellPrice) * MARKUP}
+                    comparePrice={Number(p.sellPrice) * COMPARE_MARKUP}
+                    category={p.categoryName}
                   />
                 </div>
               ))}
@@ -113,7 +124,7 @@ export default async function ShopPage({
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {total > 20 && (
             <div className="flex items-center justify-center gap-3 mt-16">
               {page > 1 && (
                 <Link
@@ -123,17 +134,13 @@ export default async function ShopPage({
                   ← Prev
                 </Link>
               )}
-              <span className="text-xs text-bloom-bark/40 tracking-wide">
-                Page {page} of {totalPages}
-              </span>
-              {page < totalPages && (
-                <Link
-                  href={`/shop?cat=${cat}&page=${page + 1}`}
-                  className="px-6 py-2 text-xs tracking-widest uppercase border border-bloom-sand text-bloom-bark hover:border-bloom-bark transition-colors"
-                >
-                  Next →
-                </Link>
-              )}
+              <span className="text-xs text-bloom-bark/40 tracking-wide">Page {page}</span>
+              <Link
+                href={`/shop?cat=${cat}&page=${page + 1}`}
+                className="px-6 py-2 text-xs tracking-widest uppercase border border-bloom-sand text-bloom-bark hover:border-bloom-bark transition-colors"
+              >
+                Next →
+              </Link>
             </div>
           )}
 

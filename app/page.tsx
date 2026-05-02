@@ -4,14 +4,17 @@ import CartDrawer from '@/components/CartDrawer'
 import ProductCard from '@/components/ProductCard'
 import { searchProducts } from '@/lib/cj'
 
+const MARKUP = 2.5        // sell at 2.5x CJ price
+const COMPARE_MARKUP = 3.2 // crossed out price at 3.2x
+
 function toSlug(name: string, pid: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + pid.slice(-6)
 }
 
 export default async function HomePage() {
   const [beautyData, homeData] = await Promise.allSettled([
-    searchProducts('beauty tools', 1, 4),
-    searchProducts('home organizer', 1, 4),
+    searchProducts('makeup brush', 1, 4),
+    searchProducts('storage box', 1, 4),
   ])
 
   const beautyProducts = beautyData.status === 'fulfilled' ? beautyData.value?.list ?? [] : []
@@ -91,7 +94,15 @@ export default async function HomePage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               {beautyProducts.map((p, i) => (
                 <div key={p.pid} className="animate-fade-up opacity-0" style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'forwards' }}>
-                  <ProductCard pid={p.pid} slug={toSlug(p.productNameEn, p.pid)} name={p.productNameEn} image={p.productImage} price={p.sellPrice} comparePrice={p.sellPrice * 1.4} category="Beauty" />
+                  <ProductCard
+                    pid={p.pid}
+                    slug={toSlug(p.productNameEn, p.pid)}
+                    name={p.productNameEn}
+                    image={p.productImage}
+                    price={Number(p.sellPrice) * MARKUP}
+                    comparePrice={Number(p.sellPrice) * COMPARE_MARKUP}
+                    category="Beauty"
+                  />
                 </div>
               ))}
             </div>
@@ -112,7 +123,15 @@ export default async function HomePage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                 {homeProducts.map((p, i) => (
                   <div key={p.pid} className="animate-fade-up opacity-0" style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'forwards' }}>
-                    <ProductCard pid={p.pid} slug={toSlug(p.productNameEn, p.pid)} name={p.productNameEn} image={p.productImage} price={p.sellPrice} comparePrice={p.sellPrice * 1.35} category="Home" />
+                    <ProductCard
+                      pid={p.pid}
+                      slug={toSlug(p.productNameEn, p.pid)}
+                      name={p.productNameEn}
+                      image={p.productImage}
+                      price={Number(p.sellPrice) * MARKUP}
+                      comparePrice={Number(p.sellPrice) * COMPARE_MARKUP}
+                      category="Home"
+                    />
                   </div>
                 ))}
               </div>
