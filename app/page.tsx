@@ -175,8 +175,13 @@ export default async function HomePage() {
             <div>
               <h4 className="text-[10px] tracking-widest uppercase text-bloom-bark/40 mb-4">Help</h4>
               <ul className="space-y-2">
-                {['Track Order', 'Shipping Info', 'Returns', 'Contact Us'].map(l => (
-                  <li key={l}><Link href="#" className="text-sm text-bloom-bark/60 hover:text-bloom-berry transition-colors">{l}</Link></li>
+                {[
+                  { label: 'Track Order',   href: '/orders' },
+                  { label: 'Shipping Info', href: '/shipping' },
+                  { label: 'Returns',       href: '/returns' },
+                  { label: 'Contact Us',    href: '/contact' },
+                ].map(l => (
+                  <li key={l.label}><Link href={l.href} className="text-sm text-bloom-bark/60 hover:text-bloom-berry transition-colors">{l.label}</Link></li>
                 ))}
               </ul>
             </div>
