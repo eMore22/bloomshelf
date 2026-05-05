@@ -9,7 +9,7 @@ const MARKUP         = 2.5
 const COMPARE_MARKUP = 3.2
 
 function toSlug(name: string, pid: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + pid.slice(-6)
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + pid
 }
 
 const CATEGORIES = [

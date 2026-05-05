@@ -8,7 +8,7 @@ const MARKUP = 2.5        // sell at 2.5x CJ price
 const COMPARE_MARKUP = 3.2 // crossed out price at 3.2x
 
 function toSlug(name: string, pid: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + pid.slice(-6)
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + pid
 }
 
 export default async function HomePage() {

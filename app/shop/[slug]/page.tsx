@@ -1,8 +1,4 @@
 'use client'
-// app/shop/[slug]/page.tsx
-// Note: We use 'use client' here so we can handle cart interactions
-// Product data is fetched client-side using the pid from the slug
-
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -11,6 +7,8 @@ import Navbar from '@/components/Navbar'
 import CartDrawer from '@/components/CartDrawer'
 import { useCart } from '@/store/cart'
 import { Minus, Plus, ShoppingBag, ArrowLeft } from 'lucide-react'
+
+const MARKUP = 2.5
 
 interface Variant {
   vid: string
@@ -32,8 +30,8 @@ interface Product {
 }
 
 export default function ProductPage() {
-  const params    = useParams()
-  const router    = useRouter()
+  const params = useParams()
+  const router = useRouter()
   const { addItem, openCart } = useCart()
 
   const [product,       setProduct]       = useState<Product | null>(null)
@@ -42,30 +40,61 @@ export default function ProductPage() {
   const [selectedVid,   setSelectedVid]   = useState<string>('')
   const [quantity,      setQuantity]      = useState(1)
   const [added,         setAdded]         = useState(false)
+  const [error,         setError]         = useState(false)
 
-  // Extract pid from slug (last 6 chars after final dash)
   const slug = params.slug as string
-  const pid  = slug?.split('-').pop() || ''
+
+  // Extract pid — it's everything after the last dash that looks like a number
+  // Slug format: product-name-here-FULLPID
+  // We split by '-' and work backwards to find the numeric pid
+  function extractPid(slug: string): string {
+    const parts = slug.split('-')
+    // Try from the end — find the longest numeric sequence
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const candidate = parts.slice(i).join('')
+      if (/^\d{10,}$/.test(candidate)) return candidate
+      // Also try just the last part if it's long enough
+      if (/^\d{6,}$/.test(parts[i])) {
+        // Check if combining with next parts gives a longer number
+        const combined = parts.slice(i).join('')
+        if (/^\d+$/.test(combined)) return combined
+      }
+    }
+    // Fallback: last segment
+    return parts[parts.length - 1]
+  }
+
+  const pid = extractPid(slug)
 
   useEffect(() => {
     if (!pid) return
+    console.log('[ProductPage] fetching pid:', pid)
+
     fetch(`/api/cj/product?pid=${pid}`)
       .then(r => r.json())
       .then(data => {
-        if (data.ok) {
+        console.log('[ProductPage] response:', JSON.stringify(data).slice(0, 200))
+        if (data.ok && data.product) {
           setProduct(data.product)
           if (data.product.variants?.length) {
             setSelectedVid(data.product.variants[0].vid)
           }
+        } else {
+          setError(true)
         }
       })
-      .catch(console.error)
+      .catch(err => {
+        console.error('[ProductPage] error:', err)
+        setError(true)
+      })
       .finally(() => setLoading(false))
   }, [pid])
 
   const selectedVariant = product?.variants?.find(v => v.vid === selectedVid)
-  const price = selectedVariant?.variantSellPrice || product?.sellPrice || 0
-  const comparePrice = price * 1.38
+  const rawPrice  = Number(selectedVariant?.variantSellPrice || product?.sellPrice || 0)
+  const price     = rawPrice * MARKUP
+  const comparePrice = rawPrice * 3.2
+
   const images = [
     product?.productImage,
     ...(product?.variants?.map(v => v.variantImage).filter(Boolean) || [])
@@ -99,7 +128,7 @@ export default function ProductPage() {
     )
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
       <>
         <Navbar />
@@ -118,21 +147,16 @@ export default function ProductPage() {
     <>
       <Navbar />
       <CartDrawer />
-
       <main className="pt-20 min-h-screen bg-bloom-cream">
         <div className="max-w-7xl mx-auto px-6 py-12">
-
-          {/* Breadcrumb */}
           <Link href="/shop" className="inline-flex items-center gap-2 text-xs tracking-widest uppercase text-bloom-bark/40 hover:text-bloom-berry transition-colors mb-10">
             <ArrowLeft size={12} />
             Back to Shop
           </Link>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-
-            {/* Image gallery */}
+            {/* Images */}
             <div className="space-y-3">
-              {/* Main image */}
               <div className="relative aspect-square bg-bloom-sand rounded-sm overflow-hidden">
                 <Image
                   src={images[selectedImage] || product.productImage}
@@ -143,17 +167,13 @@ export default function ProductPage() {
                   priority
                 />
               </div>
-
-              {/* Thumbnails */}
               {images.length > 1 && (
                 <div className="flex gap-2 flex-wrap">
                   {images.slice(0, 6).map((img, i) => (
                     <button
                       key={i}
                       onClick={() => setSelectedImage(i)}
-                      className={`relative w-16 h-16 rounded-sm overflow-hidden border-2 transition-colors ${
-                        selectedImage === i ? 'border-bloom-bark' : 'border-transparent'
-                      }`}
+                      className={`relative w-16 h-16 rounded-sm overflow-hidden border-2 transition-colors ${selectedImage === i ? 'border-bloom-bark' : 'border-transparent'}`}
                     >
                       <Image src={img} alt="" fill className="object-cover" sizes="64px" />
                     </button>
@@ -162,30 +182,19 @@ export default function ProductPage() {
               )}
             </div>
 
-            {/* Product info */}
+            {/* Info */}
             <div className="flex flex-col gap-6">
-              {/* Category */}
-              <p className="text-[10px] tracking-[0.35em] uppercase text-bloom-rose">
-                {product.categoryName}
-              </p>
+              <p className="text-[10px] tracking-[0.35em] uppercase text-bloom-rose">{product.categoryName}</p>
+              <h1 className="font-display text-3xl md:text-4xl font-light text-bloom-bark leading-tight">{product.productNameEn}</h1>
 
-              {/* Name */}
-              <h1 className="font-display text-3xl md:text-4xl font-light text-bloom-bark leading-tight">
-                {product.productNameEn}
-              </h1>
-
-              {/* Price */}
               <div className="flex items-baseline gap-3">
                 <span className="font-display text-3xl text-bloom-bark">${price.toFixed(2)}</span>
                 <span className="text-sm text-bloom-bark/40 line-through">${comparePrice.toFixed(2)}</span>
-                <span className="text-xs text-bloom-berry tracking-wide">
-                  Save {Math.round((1 - price / comparePrice) * 100)}%
-                </span>
+                <span className="text-xs text-bloom-berry tracking-wide">Save {Math.round((1 - price / comparePrice) * 100)}%</span>
               </div>
 
               <div className="w-12 h-px bg-bloom-sand" />
 
-              {/* Variants */}
               {product.variants && product.variants.length > 1 && (
                 <div className="space-y-3">
                   <p className="text-xs tracking-widest uppercase text-bloom-bark/50">
@@ -196,11 +205,7 @@ export default function ProductPage() {
                       <button
                         key={v.vid}
                         onClick={() => setSelectedVid(v.vid)}
-                        className={`px-4 py-2 text-xs tracking-wide border rounded-sm transition-colors ${
-                          selectedVid === v.vid
-                            ? 'border-bloom-bark bg-bloom-bark text-bloom-cream'
-                            : 'border-bloom-sand text-bloom-bark hover:border-bloom-bark'
-                        }`}
+                        className={`px-4 py-2 text-xs tracking-wide border rounded-sm transition-colors ${selectedVid === v.vid ? 'border-bloom-bark bg-bloom-bark text-bloom-cream' : 'border-bloom-sand text-bloom-bark hover:border-bloom-bark'}`}
                       >
                         {v.variantNameEn}
                       </button>
@@ -209,56 +214,41 @@ export default function ProductPage() {
                 </div>
               )}
 
-              {/* Quantity */}
               <div className="space-y-3">
                 <p className="text-xs tracking-widest uppercase text-bloom-bark/50">Quantity</p>
                 <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                    className="w-9 h-9 flex items-center justify-center border border-bloom-sand rounded-full hover:border-bloom-bark transition-colors"
-                  >
+                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-9 h-9 flex items-center justify-center border border-bloom-sand rounded-full hover:border-bloom-bark transition-colors">
                     <Minus size={12} />
                   </button>
                   <span className="font-body text-lg w-6 text-center">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(q => q + 1)}
-                    className="w-9 h-9 flex items-center justify-center border border-bloom-sand rounded-full hover:border-bloom-bark transition-colors"
-                  >
+                  <button onClick={() => setQuantity(q => q + 1)} className="w-9 h-9 flex items-center justify-center border border-bloom-sand rounded-full hover:border-bloom-bark transition-colors">
                     <Plus size={12} />
                   </button>
                 </div>
               </div>
 
-              {/* Add to cart */}
               <button
                 onClick={handleAddToCart}
-                className={`flex items-center justify-center gap-3 w-full py-4 text-sm tracking-widest uppercase transition-colors duration-300 ${
-                  added
-                    ? 'bg-bloom-berry text-bloom-cream'
-                    : 'bg-bloom-bark text-bloom-cream hover:bg-bloom-berry'
-                }`}
+                className={`flex items-center justify-center gap-3 w-full py-4 text-sm tracking-widest uppercase transition-colors duration-300 ${added ? 'bg-bloom-berry text-bloom-cream' : 'bg-bloom-bark text-bloom-cream hover:bg-bloom-berry'}`}
               >
                 <ShoppingBag size={16} />
                 {added ? 'Added to Bag!' : 'Add to Bag'}
               </button>
 
-              {/* Shipping note */}
               <p className="text-xs text-bloom-bark/40 tracking-wide text-center">
                 🌍 Ships worldwide · 10–20 business days · Tracked delivery
               </p>
 
               <div className="w-12 h-px bg-bloom-sand" />
 
-              {/* Description */}
               {product.productDescEn && (
                 <div className="space-y-2">
                   <p className="text-xs tracking-widest uppercase text-bloom-bark/50">Description</p>
-                  <p className="text-sm text-bloom-bark/70 leading-relaxed line-clamp-6">
+                  <p className="text-sm text-bloom-bark/70 leading-relaxed">
                     {product.productDescEn.replace(/<[^>]*>/g, '').slice(0, 400)}...
                   </p>
                 </div>
               )}
-
             </div>
           </div>
         </div>
