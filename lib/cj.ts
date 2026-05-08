@@ -1,5 +1,3 @@
-// lib/cj.ts — CJDropshipping API client
-
 const CJ_BASE = 'https://developers.cjdropshipping.com/api2.0/v1'
 
 let _accessToken = ''
@@ -16,7 +14,9 @@ export async function getCJToken(): Promise<string> {
   })
 
   const data = await res.json()
-  if (!data.data?.accessToken) throw new Error('CJ auth failed: ' + JSON.stringify(data))
+  if (!data.data?.accessToken) {
+    throw new Error('CJ auth failed: ' + JSON.stringify(data))
+  }
 
   _accessToken = data.data.accessToken
   _tokenExpiry  = Date.now() + 23 * 60 * 60 * 1000
@@ -47,43 +47,58 @@ export interface CJVariant {
 }
 
 export async function searchProducts(keyword: string, page = 1, pageSize = 20) {
-  const headers = await cjHeaders()
-  const params  = new URLSearchParams({
-    pageNum:       String(page),
-    pageSize:      String(pageSize),
-    productNameEn: keyword,
-  })
+  try {
+    const headers = await cjHeaders()
+    const params  = new URLSearchParams({
+      pageNum:       String(page),
+      pageSize:      String(pageSize),
+      productNameEn: keyword,
+    })
 
-  const res = await fetch(`${CJ_BASE}/product/list?${params}`, {
-    headers,
-    next: { revalidate: 3600 },
-  })
+    const res = await fetch(`${CJ_BASE}/product/list?${params}`, {
+      headers,
+      next: { revalidate: 3600 },
+    })
 
-  const data = await res.json()
-  if (!data.data) {
-    console.error('[CJ searchProducts] bad response:', JSON.stringify(data))
+    const data = await res.json()
+    if (!data.data) {
+      console.error('[CJ searchProducts] bad response:', JSON.stringify(data).slice(0, 200))
+      return { list: [], total: 0 }
+    }
+    return data.data as { list: CJProduct[]; total: number }
+  } catch (err) {
+    console.error('[CJ searchProducts] error:', err)
     return { list: [], total: 0 }
   }
-  return data.data as { list: CJProduct[]; total: number }
 }
 
-export async function getProduct(pid: string): Promise<CJProduct> {
-  const headers = await cjHeaders()
-  const res = await fetch(`${CJ_BASE}/product/query?pid=${pid}`, {
-    headers, next: { revalidate: 3600 },
-  })
-  const data = await res.json()
-  return data.data as CJProduct
+export async function getProduct(pid: string): Promise<CJProduct | null> {
+  try {
+    const headers = await cjHeaders()
+    const res = await fetch(`${CJ_BASE}/product/query?pid=${pid}`, {
+      headers,
+      next: { revalidate: 3600 },
+    })
+    const data = await res.json()
+    return data.data as CJProduct || null
+  } catch (err) {
+    console.error('[CJ getProduct] error:', err)
+    return null
+  }
 }
 
 export async function getShippingCost(pid: string, countryCode: string, quantity = 1) {
-  const headers = await cjHeaders()
-  const res = await fetch(`${CJ_BASE}/logistic/freightCalculate`, {
-    method: 'POST', headers,
-    body: JSON.stringify({ startCountryCode: 'CN', endCountryCode: countryCode, quantity, pid }),
-  })
-  const data = await res.json()
-  return data.data as { logisticName: string; logisticPrice: number; time: string }[]
+  try {
+    const headers = await cjHeaders()
+    const res = await fetch(`${CJ_BASE}/logistic/freightCalculate`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ startCountryCode: 'CN', endCountryCode: countryCode, quantity, pid }),
+    })
+    const data = await res.json()
+    return data.data as { logisticName: string; logisticPrice: number; time: string }[]
+  } catch {
+    return []
+  }
 }
 
 export interface CJOrderItem { vid: string; quantity: number }
@@ -112,8 +127,12 @@ export async function placeCJOrder(
 }
 
 export async function getOrderTracking(cjOrderId: string) {
-  const headers = await cjHeaders()
-  const res = await fetch(`${CJ_BASE}/shopping/order/getOrderDetail?orderNum=${cjOrderId}`, { headers })
-  const data = await res.json()
-  return data.data
+  try {
+    const headers = await cjHeaders()
+    const res = await fetch(`${CJ_BASE}/shopping/order/getOrderDetail?orderNum=${cjOrderId}`, { headers })
+    const data = await res.json()
+    return data.data
+  } catch {
+    return null
+  }
 }
