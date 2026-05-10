@@ -1,23 +1,22 @@
 import Link from 'next/link'
 
 interface Props {
-  pid:          string
-  slug:         string
-  name:         string
-  image:        string
-  price:        number
+  pid:           string
+  slug:          string
+  name:          string
+  image:         string
+  price:         number
   comparePrice?: number
-  category?:    string
+  category?:     string
 }
 
-export default function ProductCard({ pid, slug, name, image, price, comparePrice, category }: Props) {
+export default function ProductCard({ slug, name, image, price, comparePrice, category }: Props) {
   const numPrice        = Number(price) || 0
   const numComparePrice = Number(comparePrice) || 0
 
-  // Skip products with no valid price
   if (numPrice <= 0) return null
 
-  const discount = numComparePrice && numComparePrice > numPrice
+  const discount = numComparePrice > numPrice
     ? Math.round((1 - numPrice / numComparePrice) * 100)
     : null
 
@@ -25,16 +24,12 @@ export default function ProductCard({ pid, slug, name, image, price, comparePric
     <Link href={`/shop/${slug}`} className="group block">
       <div className="relative overflow-hidden rounded-sm bg-bloom-sand aspect-[3/4]">
         {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={image}
             alt={name}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement
-              target.style.display = 'none'
-            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-bloom-sand">
