@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import CartDrawer from '@/components/CartDrawer'
@@ -196,3 +197,4 @@ export default async function HomePage() {
     </>
   )
 }
+// This file is correct - error is likely from CJ throwing

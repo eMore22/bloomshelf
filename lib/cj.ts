@@ -10,7 +10,7 @@ export async function getCJToken(): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ apiKey: process.env.CJ_API_KEY }),
-    cache: 'no-store',
+    
   })
 
   const data = await res.json()

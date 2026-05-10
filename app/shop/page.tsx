@@ -1,4 +1,5 @@
 // app/shop/page.tsx
+export const dynamic = 'force-dynamic'
 import Navbar from '@/components/Navbar'
 import CartDrawer from '@/components/CartDrawer'
 import ProductCard from '@/components/ProductCard'
