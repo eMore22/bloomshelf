@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import CartDrawer from '@/components/CartDrawer'
@@ -44,23 +43,16 @@ export default function ProductPage() {
 
   const slug = params.slug as string
 
-  // Extract pid — it's everything after the last dash that looks like a number
-  // Slug format: product-name-here-FULLPID
-  // We split by '-' and work backwards to find the numeric pid
   function extractPid(slug: string): string {
     const parts = slug.split('-')
-    // Try from the end — find the longest numeric sequence
     for (let i = parts.length - 1; i >= 0; i--) {
-      const candidate = parts.slice(i).join('')
-      if (/^\d{10,}$/.test(candidate)) return candidate
-      // Also try just the last part if it's long enough
+      const combined = parts.slice(i).join('')
+      if (/^\d{10,}$/.test(combined)) return combined
       if (/^\d{6,}$/.test(parts[i])) {
-        // Check if combining with next parts gives a longer number
-        const combined = parts.slice(i).join('')
-        if (/^\d+$/.test(combined)) return combined
+        const c = parts.slice(i).join('')
+        if (/^\d+$/.test(c)) return c
       }
     }
-    // Fallback: last segment
     return parts[parts.length - 1]
   }
 
@@ -68,12 +60,9 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (!pid) return
-    console.log('[ProductPage] fetching pid:', pid)
-
     fetch(`/api/cj/product?pid=${pid}`)
       .then(r => r.json())
       .then(data => {
-        console.log('[ProductPage] response:', JSON.stringify(data).slice(0, 200))
         if (data.ok && data.product) {
           setProduct(data.product)
           if (data.product.variants?.length) {
@@ -83,16 +72,13 @@ export default function ProductPage() {
           setError(true)
         }
       })
-      .catch(err => {
-        console.error('[ProductPage] error:', err)
-        setError(true)
-      })
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [pid])
 
   const selectedVariant = product?.variants?.find(v => v.vid === selectedVid)
-  const rawPrice  = Number(selectedVariant?.variantSellPrice || product?.sellPrice || 0)
-  const price     = rawPrice * MARKUP
+  const rawPrice     = Number(selectedVariant?.variantSellPrice || product?.sellPrice || 0)
+  const price        = rawPrice * MARKUP
   const comparePrice = rawPrice * 3.2
 
   const images = [
@@ -149,24 +135,31 @@ export default function ProductPage() {
       <CartDrawer />
       <main className="pt-20 min-h-screen bg-bloom-cream">
         <div className="max-w-7xl mx-auto px-6 py-12">
+
           <Link href="/shop" className="inline-flex items-center gap-2 text-xs tracking-widest uppercase text-bloom-bark/40 hover:text-bloom-berry transition-colors mb-10">
             <ArrowLeft size={12} />
             Back to Shop
           </Link>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+
             {/* Images */}
             <div className="space-y-3">
               <div className="relative aspect-square bg-bloom-sand rounded-sm overflow-hidden">
-                <Image
-                  src={images[selectedImage] || product.productImage}
-                  alt={product.productNameEn}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  priority
-                />
+                {images[selectedImage] ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={images[selectedImage]}
+                    alt={product.productNameEn}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-bloom-bark/20 text-sm">No image</span>
+                  </div>
+                )}
               </div>
+
               {images.length > 1 && (
                 <div className="flex gap-2 flex-wrap">
                   {images.slice(0, 6).map((img, i) => (
@@ -175,7 +168,8 @@ export default function ProductPage() {
                       onClick={() => setSelectedImage(i)}
                       className={`relative w-16 h-16 rounded-sm overflow-hidden border-2 transition-colors ${selectedImage === i ? 'border-bloom-bark' : 'border-transparent'}`}
                     >
-                      <Image src={img} alt="" fill className="object-cover" sizes="64px" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -185,12 +179,16 @@ export default function ProductPage() {
             {/* Info */}
             <div className="flex flex-col gap-6">
               <p className="text-[10px] tracking-[0.35em] uppercase text-bloom-rose">{product.categoryName}</p>
-              <h1 className="font-display text-3xl md:text-4xl font-light text-bloom-bark leading-tight">{product.productNameEn}</h1>
+              <h1 className="font-display text-3xl md:text-4xl font-light text-bloom-bark leading-tight">
+                {product.productNameEn}
+              </h1>
 
               <div className="flex items-baseline gap-3">
                 <span className="font-display text-3xl text-bloom-bark">${price.toFixed(2)}</span>
                 <span className="text-sm text-bloom-bark/40 line-through">${comparePrice.toFixed(2)}</span>
-                <span className="text-xs text-bloom-berry tracking-wide">Save {Math.round((1 - price / comparePrice) * 100)}%</span>
+                <span className="text-xs text-bloom-berry tracking-wide">
+                  Save {Math.round((1 - price / comparePrice) * 100)}%
+                </span>
               </div>
 
               <div className="w-12 h-px bg-bloom-sand" />
@@ -205,7 +203,11 @@ export default function ProductPage() {
                       <button
                         key={v.vid}
                         onClick={() => setSelectedVid(v.vid)}
-                        className={`px-4 py-2 text-xs tracking-wide border rounded-sm transition-colors ${selectedVid === v.vid ? 'border-bloom-bark bg-bloom-bark text-bloom-cream' : 'border-bloom-sand text-bloom-bark hover:border-bloom-bark'}`}
+                        className={`px-4 py-2 text-xs tracking-wide border rounded-sm transition-colors ${
+                          selectedVid === v.vid
+                            ? 'border-bloom-bark bg-bloom-bark text-bloom-cream'
+                            : 'border-bloom-sand text-bloom-bark hover:border-bloom-bark'
+                        }`}
                       >
                         {v.variantNameEn}
                       </button>
@@ -217,11 +219,17 @@ export default function ProductPage() {
               <div className="space-y-3">
                 <p className="text-xs tracking-widest uppercase text-bloom-bark/50">Quantity</p>
                 <div className="flex items-center gap-4">
-                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-9 h-9 flex items-center justify-center border border-bloom-sand rounded-full hover:border-bloom-bark transition-colors">
+                  <button
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    className="w-9 h-9 flex items-center justify-center border border-bloom-sand rounded-full hover:border-bloom-bark transition-colors"
+                  >
                     <Minus size={12} />
                   </button>
                   <span className="font-body text-lg w-6 text-center">{quantity}</span>
-                  <button onClick={() => setQuantity(q => q + 1)} className="w-9 h-9 flex items-center justify-center border border-bloom-sand rounded-full hover:border-bloom-bark transition-colors">
+                  <button
+                    onClick={() => setQuantity(q => q + 1)}
+                    className="w-9 h-9 flex items-center justify-center border border-bloom-sand rounded-full hover:border-bloom-bark transition-colors"
+                  >
                     <Plus size={12} />
                   </button>
                 </div>
@@ -229,7 +237,11 @@ export default function ProductPage() {
 
               <button
                 onClick={handleAddToCart}
-                className={`flex items-center justify-center gap-3 w-full py-4 text-sm tracking-widest uppercase transition-colors duration-300 ${added ? 'bg-bloom-berry text-bloom-cream' : 'bg-bloom-bark text-bloom-cream hover:bg-bloom-berry'}`}
+                className={`flex items-center justify-center gap-3 w-full py-4 text-sm tracking-widest uppercase transition-colors duration-300 ${
+                  added
+                    ? 'bg-bloom-berry text-bloom-cream'
+                    : 'bg-bloom-bark text-bloom-cream hover:bg-bloom-berry'
+                }`}
               >
                 <ShoppingBag size={16} />
                 {added ? 'Added to Bag!' : 'Add to Bag'}
